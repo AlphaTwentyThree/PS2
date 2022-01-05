@@ -1,0 +1,58 @@
+# Channel joiner for *.ss2 files
+# accepted formats:
+# [name]l.ss2/[name]r.ss2
+# [name]L.ss2/[name]R.ss2
+# note : resulting files are played correctly
+#
+# (c) 2022-01-05 by AlphaTwentyThree of Zenhax
+# script for QuickBMS http://quickbms.aluigi.org
+
+get NAME basename
+get EXT extension
+if EXT != "ss2"
+	print "Error: source files are not ss2! Aborting..."
+	cleanexit
+endif
+string NAME -= 1
+string L p "%sl.%s" NAME EXT
+string R p "%sr.%s" NAME EXT
+open FDSE L 0 S
+if S == 0
+	string L p "%sL.%s" NAME EXT
+	string R p "%sR.%s" NAME EXT
+	open FDSE L 0
+endif
+open FDSE R 1
+get SIZEL asize 0
+get SIZER asize 1
+if SIZEL != SIZER
+	print "Error: channels have different sizes! Aborting..."
+	cleanexit
+endif
+goto 0x10 0
+get CH byte
+if CH != 1
+	print "Error: source files are not mono! Aborting..."
+	cleanexit
+endif
+goto 0xc 0
+get FREQ long
+xmath INTERLEAVE  "SIZEL - 0x28"
+xmath PSIZE "SIZEL + SIZER - 0x28" # minus one header
+xmath SIZE "SIZEL-0x28"
+
+putVarChr MEMORY_FILE PSIZE 0
+log MEMORY_FILE 0 0
+	set MEMORY_FILE binary "\x53\x53\x68\x64\x18\x00\x00\x00\x10\x00\x00\x00\xb0\x36\x00\x00\x02\x00\x00\x00\xc0\x2f\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x53\x53\x62\x64\x00\xe8\x11\x00"
+	append
+	log MEMORY_FILE 0x28 SIZE 0
+	log MEMORY_FILE 0x28 SIZE 1
+	append
+	xmath SIZE "2*SIZEL-0x28"
+	putVarChr MEMORY_FILE 0x24 SIZE long
+	putVarChr MEMORY_FILE 0xc FREQ long
+	putVarChr MEMORY_FILE 0x14 INTERLEAVE long
+	putVarChr MEMORY_FILE 0x10 2 byte
+	get SIZE asize MEMORY_FILE
+	string NAME p "%s.ss2" NAME
+	log NAME 0 SIZE MEMORY_FILE

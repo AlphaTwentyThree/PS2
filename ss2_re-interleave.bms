@@ -1,0 +1,83 @@
+# re-interleaves *.ss2 files with 0x10 bytes interleave
+#
+# (c) 2022-01-05 by AlphaTwentyThree of Zenhax
+# script for QuickBMS http://quickbms.aluigi.org
+
+idstring "SShd"
+goto 0xc
+get FREQ long
+get CH long
+if CH == 1
+	cleanexit
+endif
+goto 0x14
+get INTERLEAVE long
+if INTERLEAVE == 0x10
+	cleanexit
+endif
+get STREAMSIZE asize
+xmath STREAMSIZE "STREAMSIZE - 0x28"
+xmath BLOCKS "STREAMSIZE / (INTERLEAVE * 2)" # cycles
+xmath TEST "STREAMSIZE % (INTERLEAVE * 2)"
+if TEST != 0
+	xmath RES "TEST / 2" # single last block
+else
+	set RES 0
+endif
+callfunction deinterleave 1
+callfunction reinterleave 1
+callfunction SS2 1
+
+startfunction deinterleave
+	xmath PSIZE "STREAMSIZE/2"
+	putVarchr MEMORY_FILE SSIZE 0
+	putVarchr MEMORY_FILE2 SSIZE 0
+	log MEMORY_FILE 0 0
+	log MEMORY_FILE2 0 0
+	goto 0x28
+	for k = 0 < BLOCKS
+		getDstring DATA INTERLEAVE
+		putDstring DATA INTERLEAVE MEMORY_FILE
+		getDstring DATA INTERLEAVE
+		putDstring DATA INTERLEAVE MEMORY_FILE2
+	next k
+	getDstring DATA RES
+	putDstring DATA RES MEMORY_FILE
+	getDstring DATA RES
+	putDstring DATA RES MEMORY_FILE2
+endfunction
+
+startfunction reinterleave
+	putVarChr MEMORY_FILE3 STREAMSIZE 0
+	log MEMORY_FILE3 0 0
+	get SIZE1 asize MEMORY_FILE
+	get SIZE2 asize MEMORY_FILE2
+	xmath CYC "(SIZE1 / 0x10)"
+	set OFFSET 0
+	for i = 0 < CYC
+		goto OFFSET MEMORY_FILE
+		getDstring DATA 0x10 MEMORY_FILE
+		putDstring DATA 0x10 MEMORY_FILE3
+		goto OFFSET MEMORY_FILE2
+		getDstring DATA 0x10 MEMORY_FILE2
+		putDstring DATA 0x10 MEMORY_FILE3
+		math OFFSET += 0x10
+	next i
+endfunction
+
+startfunction SS2
+	set MEMORY_FILE4 binary "\x53\x53\x68\x64\x18\x00\x00\x00\x10\x00\x00\x00\xb0\x36\x00\x00\x02\x00\x00\x00\xc0\x2f\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x53\x53\x62\x64\x00\xe8\x11\x00"
+	get SIZE asize MEMORY_FILE3
+	append
+	log MEMORY_FILE4 0 SIZE MEMORY_FILE3
+	append
+	putVarChr MEMORY_FILE4 0xc FREQ long
+	putVarChr MEMORY_FILE4 0x10 CH byte
+	set INTERLEAVE 0x10
+	putVarChr MEMORY_FILE4 0x14 INTERLEAVE long
+	putVarChr MEMORY_FILE4 0x24 SIZE long
+	get NAME basename
+	string NAME += ".ss2"
+	get SIZE asize MEMORY_FILE4
+	log NAME 0 SIZE MEMORY_FILE4
+endfunction

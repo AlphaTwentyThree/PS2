@@ -1,0 +1,26 @@
+# add SS2 header to stream
+#
+# (c) 2022-01-05 by AlphaTwentyThree of github
+# script for QuickBMS http://quickbms.aluigi.org
+
+
+set OFFSET 0x0
+set INTERLEAVE 0x10
+set CH 2
+set FREQ 48000
+get SIZE asize
+math SIZE -= OFFSET
+
+
+	set MEMORY_FILE binary "\x53\x53\x68\x64\x18\x00\x00\x00\x10\x00\x00\x00\xb0\x36\x00\x00\x02\x00\x00\x00\xc0\x2f\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x53\x53\x62\x64\x00\xe8\x11\x00"
+	append
+	log MEMORY_FILE OFFSET SIZE
+	append
+	putVarChr MEMORY_FILE 0x24 SIZE long
+	putVarChr MEMORY_FILE 0xc FREQ long
+	putVarChr MEMORY_FILE 0x14 INTERLEAVE long
+	putVarChr MEMORY_FILE 0x10 CH byte
+	get SIZE asize MEMORY_FILE
+	get NAME basename
+	string NAME += ".ss2"
+	log NAME 0 SIZE MEMORY_FILE
